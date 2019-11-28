@@ -26,6 +26,22 @@ int charToDigit(char c)
 	return -1;
 }
 
+WORD randomColor(WORD srccolor)
+{
+	WORD bgcolor = srccolor & 0xF0;			//		wxyz abcd & 1111 0000	-> wxyz 0000
+	WORD excludeColor = srccolor >> 4;		//		wxyz abcd >> 4			-> 0000 wxyz
+	WORD res = rand() % 15 + 1;				//		0000 efgh
+	res ^= excludeColor;					//		0000 efgh ^ 0000 wxyz
+	return bgcolor | res;
+}
+
+WORD inverseColor(WORD srccolor)
+{
+	WORD bgcolor = srccolor & 0xF0;
+	WORD res = ((~bgcolor & 0xFF) >> 4); //добавляем к цвету фона инвертированный цвет фона
+	return bgcolor | res;
+}
+
 //0 - Ошибка; 1 - Ввелось корректно
 int inputInt(int *var)
 {
@@ -57,10 +73,12 @@ int main()
 	setlocale(LC_ALL, "Russian");
 	hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
 
-	WORD bgcolor, color, srccolor;
+	WORD bgcolor, color, srccolor, textcolor, bgintentity;
 	GetConsoleScreenBufferInfo(hStdout, &csbiInfo); //считываем характеристики консоли
 	srccolor = csbiInfo.wAttributes; // выковыряли цвет
-	bgcolor = (srccolor & 0xF0); // выковыряли цвет фона
+	//bgcolor = (srccolor & 0xF0); // выковыряли цвет фона
+	//textcolor = (srccolor & 0x0F); //выковыряли цвет текста
+	//bgintentity = (srccolor & 0x80); //интенсивность фона
 
 	//csbiInfo.wAttributes  = 1011 0101
 	//0xF0					= 1111 0000
@@ -69,8 +87,13 @@ int main()
 	//FOREGROUND_RED		= 0000 0100
 	//FOREGROUND_BLUE		= 0000 0001
 	//                      = 1011 1101
+	//a						= wxyz abcd
+	//a >> 1				= 0wxy zabc
+	//a >> 2				= 00wx yzab
+	//a >> 3				= 000w xyza
+	//a >> 4				= 0000 wxyz
 
-	color = bgcolor | FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY;//добавляем к цвету фона наш цвет
+	color = inverseColor(srccolor);
 	SetConsoleTextAttribute(hStdout, color); //устанавливаем наш цвет в консоль
 
 	printf("Введите размерность матрицы : ");
@@ -78,6 +101,7 @@ int main()
 	if (!inputInt(&n))
 	{
 		printf("Некорректный ввод числа\n");
+		SetConsoleTextAttribute(hStdout, srccolor);
 		return 0;
 	}
 
@@ -89,13 +113,13 @@ int main()
 
 	for (int i = 0; i < n * n; ++i)
 	{
-		color = bgcolor | (rand() % 15 + 1);
+		color = randomColor(srccolor);
 		SetConsoleTextAttribute(hStdout, color);
 		printf("%d ", arr[i]);
 	}
 	printf("\n\n");
 
-	color = bgcolor | FOREGROUND_GREEN;
+	color = randomColor(srccolor);
 	SetConsoleTextAttribute(hStdout, color);
 	for (int i = 0; i < n; ++i)
 	{
@@ -107,21 +131,19 @@ int main()
 	}
 	printf("\n");
 
-	color = bgcolor | FOREGROUND_RED | FOREGROUND_INTENSITY;
-	SetConsoleTextAttribute(hStdout, color);
 	for (int i = 0; i < n; ++i)
 	{
 		for (int j = 0; j < n; ++j)
 		{
 			if (i == j)
 			{
-				color = bgcolor | FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+				color = inverseColor(srccolor) | 0x08;
 				SetConsoleTextAttribute(hStdout, color);
 				printf("%d ", arr[j * n + i]);
 			}
 			else if (i < j)
 			{
-				color = bgcolor | FOREGROUND_RED | FOREGROUND_GREEN;
+				color = inverseColor(srccolor) & 0xF7;
 				SetConsoleTextAttribute(hStdout, color);
 				printf("%d ", arr[j * n + i]);
 			}
