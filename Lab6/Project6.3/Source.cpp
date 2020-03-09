@@ -19,7 +19,7 @@ int charToDigit(char c)
 }
 
 //0 - Ошибка; 1 - Ввелось корректно
-int inputInt(int *var)
+int inputInt(int &var)
 {
 	char c = 0;
 	int value = -1;
@@ -39,7 +39,7 @@ int inputInt(int *var)
 	{
 		return 0;
 	}
-	*var = value;
+	var = value;
 	return 1;
 }
 
@@ -52,6 +52,8 @@ void initMatrix(int** &matrix, int rows, int cols)
 		for (int j = 0; j < cols; j++)
 		{
 			matrix[i][j] = rand() % 100;
+			//matrix[i][j] = rows - i;
+			//matrix[i][j] = i + 1;
 		}
 	}
 }
@@ -96,6 +98,14 @@ void swap(int &a, int &b)
 	int c = a;
 	a = b;
 	b = c;
+}
+
+void mixColMatrix(int** matrix, int rows, int col)
+{
+	for (int i = 0; i < rows; i++)
+	{
+		swap(matrix[i][col], matrix[rand() % rows][col]);
+	}
 }
 
 void mixMatrix(int** matrix, int rows, int cols)
@@ -146,27 +156,30 @@ pair<int, int> selectionColsSort(int** inmatrix, int rows, int cols)
 	int** matrix = copyMatrix(inmatrix, rows, cols);
 	int per = 0;
 	int srav = 0;
-
-	for (int k = 0; k < cols; k++)
+	if (rows != 1)
 	{
-		for (int i = 0; i < rows; i++)
+		for (int k = 0; k < cols; k++)
 		{
-			int index = 0;
-			for (int j = 0; j < rows - i; j++)
+			for (int i = 0; i < rows - 1; i++)
 			{
-				if (matrix[j][k] < matrix[index][k])
+				int index = i;
+				for (int j = i + 1; j < rows; j++)
 				{
-					index = j;
+					if (matrix[j][k] > matrix[index][k])
+					{
+						index = j;
+					}
+					srav++;
 				}
-				srav++;
-			}
-			if (index != rows - i - 1)
-			{
-				swap(matrix[index][k], matrix[rows - i - 1][k]);
-				per++;
+				if (index != i)
+				{
+					swap(matrix[index][k], matrix[i][k]);
+					per++;
+				}
 			}
 		}
 	}
+
 
 	printf("Перестановки: %d \t Сравнения: %d \n", per, srav);
 	printMatrix(matrix, rows, cols);
@@ -186,13 +199,20 @@ pair<int, int> insertColsSort(int** inmatrix, int rows, int cols)
 		{
 			int temp = matrix[i][k];
 			int j = 0;
-			for (j = i; j > 0 && temp > matrix[j - 1][k]; j--)
+			for (j = i, srav++; temp > matrix[j - 1][k]; j--, srav++)
 			{
 				matrix[j][k] = matrix[j - 1][k];
-				per++;
-				srav++;
+				if (j == 1)
+				{
+					j--;
+					break;
+				}
 			}
-			matrix[j][k] = temp;
+			if (j != i)
+			{
+				matrix[j][k] = temp;
+				per++;
+			}
 		}
 	}
 
@@ -216,11 +236,15 @@ pair<int, int> shellColsSort(int** inmatrix, int rows, int cols)
 			{
 				int temp = matrix[i][k];
 				int j = 0;
-				for (j = i; j >= diff && temp > matrix[j - diff][k]; j -= diff)
+				for (j = i, srav++; temp > matrix[j - diff][k]; j -= diff, srav++)
 				{
 					matrix[j][k] = matrix[j - diff][k];
-					srav++;
 					per++;
+					if (j - diff < diff)
+					{
+						j -= diff;
+						break;
+					}
 				}
 				matrix[j][k] = temp;
 			}
@@ -243,14 +267,19 @@ pair<int, pair<int, int>> partition(int** inmatrix, int low, int high, int col)
 	{
 		if (inmatrix[j][col] > pivot)
 		{
-			swap(inmatrix[i][col], inmatrix[j][col]);
+			if (i != j) {
+				swap(inmatrix[i][col], inmatrix[j][col]);
+				per++;
+			}
 			i++;
-			per++;
 		}
 		srav++;
 	}
-	swap(inmatrix[i][col], inmatrix[high][col]);
-	per++;
+	if (i != high)
+	{
+		swap(inmatrix[i][col], inmatrix[high][col]);
+		per++;
+	}
 	return pair<int, pair<int, int>>(i, pair<int, int>(per, srav));
 }
 
@@ -262,8 +291,12 @@ pair<int, int> quickSort(int** inmatrix, int low, int high, int col)
 		pair<int, pair<int, int>> pi = partition(inmatrix, low, high, col);
 		res.first += pi.second.first;
 		res.second += pi.second.second;
-		quickSort(inmatrix, low, pi.first - 1, col);
-		quickSort(inmatrix, pi.first + 1, high, col);
+		pair<int, int> ps = quickSort(inmatrix, low, pi.first - 1, col);
+		res.first += ps.first;
+		res.second += ps.second;
+		ps = quickSort(inmatrix, pi.first + 1, high, col);
+		res.first += ps.first;
+		res.second += ps.second;
 	}
 	return res;
 }
@@ -287,6 +320,37 @@ pair<int, int> quickColsSort(int** inmatrix, int rows, int cols)
 	return pair<int, int>(per, srav);
 }
 
+int colSorted(int** matrix, int rows, int col)
+{
+	for (int i = 0; i < rows - 1; i++)
+	{
+		if (matrix[i][col] < matrix[i + 1][col])
+		{
+			return 0;
+		}
+	}
+	return 1;
+}
+
+pair<int, int> monkeyColSort(int** inmatrix, int rows, int cols)
+{
+	int** matrix = copyMatrix(inmatrix, rows, cols);
+	int per = 0;
+	int srav = 0;
+	for (int k = 0; k < cols; k++)
+	{
+		while (!colSorted(matrix, rows, k)) {
+			mixColMatrix(matrix, rows, k);
+		}
+		cout << endl;
+		printMatrix(matrix, rows, cols);
+	}
+	printf("Перестановки: %d \t Сравнения: %d \n", per, srav);
+	printMatrix(matrix, rows, cols);
+	deleteMatrix(matrix, rows, cols);
+	return pair<int, int>(per, srav);
+}
+
 int main()
 {
 	srand(time(0));
@@ -294,7 +358,7 @@ int main()
 
 	printf("Введите количество строк матрицы : ");
 	int n = 0;
-	if (!inputInt(&n))
+	if (!inputInt(n))
 	{
 		printf("Некорректный ввод числа\n");
 		return 0;
@@ -302,7 +366,7 @@ int main()
 
 	printf("Введите количество столбцов матрицы : ");
 	int m = 0;
-	if (!inputInt(&m))
+	if (!inputInt(m))
 	{
 		printf("Некорректный ввод числа\n");
 		return 0;
@@ -311,6 +375,8 @@ int main()
 	int** matrix = nullptr;
 	initMatrix(matrix, n, m);
 	printMatrix(matrix, n, m);
+	//monkeyColSort(matrix, n, m);
+
 	pair<int, int> res[5];
 
 	printf("\n\nСортировка пузырьком:\n");
@@ -333,20 +399,17 @@ int main()
 	printf("_____________________________________________________________________________________________________________________\n");
 	printf("____________|Сортировка пузырьком| Сортировка отбором |Сортировка вставками|  Сортировка Шелла  | Быстрая сортировка |\n");
 
-	/*for (int i = 0; i < 5; i++)
-	{
-		printf("%7d\t%7d\n", res[i].first, res[i].second);
-	}*/
-	printf("Сравнения   |");
+	printf("Перестановки|");
 	for (int i = 0; i < 5; i++)
 	{
 		printf("%20d|", res[i].first);
 	}
-	printf("\nПерестановки|");
+	printf("\nСравнения   |");
 	for (int i = 0; i < 5; i++)
 	{
 		printf("%20d|", res[i].second);
 	}
 	printf("\n____________|____________________|____________________|____________________|____________________|____________________|\n");
+
 	return 0;
 }
