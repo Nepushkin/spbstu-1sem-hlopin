@@ -1,7 +1,7 @@
 #pragma once
 extern "C" __declspec(dllexport)
-double myf_math(double x, double y);	
+double myf_math(double x, double a);
 extern "C" __declspec(dllexport)
-double myf_90001(double x, double y, double epsilon);
+double myf_1b(double a, double x, double epsilon);
 extern "C" __declspec(dllexport)
-char* FName();
+const char* FName();
